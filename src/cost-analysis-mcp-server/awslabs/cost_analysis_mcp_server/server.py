@@ -25,11 +25,25 @@ from bs4 import BeautifulSoup
 from httpx import AsyncClient
 from mcp.server.fastmcp import Context, FastMCP
 from typing import Any, Dict, List, Optional
-
+from pydantic import BaseModel, Field
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class PricingFilter(BaseModel):
+    """Filter model for AWS Price List API queries."""
+    field: str = Field(..., description="The field to filter on (e.g., 'instanceType', 'location')")
+    type: str = Field("TERM_MATCH", description="The type of filter match")
+    value: str = Field(..., description="The value to match against")
+
+
+class PricingFilters(BaseModel):
+    """Container for multiple pricing filters."""
+    filters: List[PricingFilter] = Field(
+        default_factory=list,
+        description="List of filters to apply to the pricing query"
+    )
 
 mcp = FastMCP(
     name='awslabs.cost-analysis-mcp-server',
@@ -212,36 +226,12 @@ async def get_pricing_from_web(service_code: str, ctx: Context) -> Optional[Dict
     description="""Get pricing information from AWS Price List API.
     Service codes for API often differ from web URLs.
     (e.g., use "AmazonES" for OpenSearch, not "AmazonOpenSearchService").
+    List of service codes can be found with `curl 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json' | jq -r '.offers| .[] | .offerCode'`
     IMPORTANT GUIDELINES:
     - When retrieving foundation model pricing, always use the latest models for comparison
     - For database compatibility with services, only include confirmed supported databases
     - Providing less information is better than giving incorrect information
-    
-    For AmazonEC2, the following attributes can be used for filtering:
-    - instanceType: The instance type (e.g., 'z1d.3xlarge')
-    - location: The AWS region location (e.g., 'Asia Pacific (Singapore)')
-    - operatingSystem: The OS (e.g., 'Linux', 'SUSE', 'Windows')
-    - tenancy: Instance tenancy (e.g., 'Shared', 'Dedicated')
-    - capacitystatus: Capacity status (e.g., 'UnusedCapacityReservation')
-    - instanceFamily: Instance family (e.g., 'Memory optimized')
-    - currentGeneration: Whether the instance is current gen ('Yes'/'No')
-    - vcpu: Number of vCPUs (e.g., '12')
-    - memory: Memory size (e.g., '96 GiB')
-    - storage: Storage configuration (e.g., '1 x 450 NVMe SSD')
-    - networkPerformance: Network performance level (e.g., 'Up to 10 Gigabit')
-    - processorArchitecture: CPU architecture (e.g., '64-bit')
-    - physicalProcessor: CPU type (e.g., 'Intel Xeon Platinum 8151')
-    - clockSpeed: CPU clock speed (e.g., '4 GHz')
-
-    For AmazonS3, the following attributes can be used for filtering:
-    - location: The AWS region location (e.g., 'Asia Pacific (Singapore)')
-    - locationType: Type of location (e.g., 'AWS Region')
-    - feeCode: Type of fee (e.g., 'Glacier:EarlyDelete')
-    - feeDescription: Description of the fee (e.g., 'Pro-rated fee for deleting items prior to 90 days')
-    - usagetype: Usage type code (e.g., 'APS1-EarlyDelete-ByteHrs')
-    - operation: Operation type (can be empty for certain fee types)
-    - regionCode: AWS region code (e.g., 'ap-southeast-1')
-    
+      
     Filters should be provided in the format:
     [
         {
@@ -254,13 +244,15 @@ async def get_pricing_from_web(service_code: str, ctx: Context) -> Optional[Dict
             'Type': 'TERM_MATCH',
             'Value': 'ap-southeast-1'
         }
-    ]""",
+    ]
+    Details of the filter can be found at https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_Filter.html
+    """,
 )
 async def get_pricing_from_api(
     service_code: str,
     region: str,
     ctx: Context,
-    filters: Optional[List[Dict[str, str]]] = None
+    filters: Optional[PricingFilters] = None
 ) -> Optional[Dict]:
     """Get pricing information from AWS Price List API. If the API request fails in the initial attempt, retry by modifying the service_code.
 
@@ -279,11 +271,12 @@ async def get_pricing_from_api(
         )
 
         # Start with the region filter
-        api_filters = [{'Type': 'TERM_MATCH', 'Field': 'regionCode', 'Value': region}]
+        region_filter = PricingFilter(field='regionCode', value=region)
+        api_filters = [region_filter.dict()]
         
         # Add any additional filters if provided
-        if filters:
-            api_filters.extend(filters)
+        if filters and filters.filters:
+            api_filters.extend([f.dict() for f in filters.filters])
 
         response = pricing_client.get_products(
             ServiceCode=service_code,
