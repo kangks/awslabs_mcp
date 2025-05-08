@@ -14,12 +14,12 @@
 This server provides tools for analyzing AWS service costs across different user tiers.
 """
 
-from typing import Any, Dict, List, Optional
-
 import argparse
-import boto3
 import logging
 import os
+from typing import Any, Dict, List, Optional
+
+import boto3
 from bs4 import BeautifulSoup
 from httpx import AsyncClient
 from mcp.server.fastmcp import Context, FastMCP
