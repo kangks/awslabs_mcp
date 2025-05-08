@@ -32,19 +32,24 @@ from typing import Any, Dict, List, Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class PricingFilter(BaseModel):
     """Filter model for AWS Price List API queries."""
-    field: str = Field(..., description="The field to filter on (e.g., 'instanceType', 'location')")
-    type: str = Field("TERM_MATCH", description="The type of filter match")
-    value: str = Field(..., description="The value to match against")
+
+    field: str = Field(
+        ..., description="The field to filter on (e.g., 'instanceType', 'location')"
+    )
+    type: str = Field('TERM_MATCH', description='The type of filter match')
+    value: str = Field(..., description='The value to match against')
 
 
 class PricingFilters(BaseModel):
     """Container for multiple pricing filters."""
+
     filters: List[PricingFilter] = Field(
-        default_factory=list,
-        description="List of filters to apply to the pricing query"
+        default_factory=list, description='List of filters to apply to the pricing query'
     )
+
 
 mcp = FastMCP(
     name='awslabs.cost-analysis-mcp-server',
@@ -250,10 +255,7 @@ async def get_pricing_from_web(service_code: str, ctx: Context) -> Optional[Dict
     """,
 )
 async def get_pricing_from_api(
-    service_code: str,
-    region: str,
-    ctx: Context,
-    filters: Optional[PricingFilters] = None
+    service_code: str, region: str, ctx: Context, filters: Optional[PricingFilters] = None
 ) -> Optional[Dict]:
     """Get pricing information from AWS Price List API. If the API request fails in the initial attempt, retry by modifying the service_code.
 
