@@ -15,19 +15,18 @@ This server provides tools for analyzing AWS service costs across different user
 """
 
 import argparse
+import boto3
 import logging
 import os
-from typing import Any, Dict, List, Optional
-
-import boto3
+from awslabs.cost_analysis_mcp_server.cdk_analyzer import analyze_cdk_project
+from awslabs.cost_analysis_mcp_server.static.patterns import BEDROCK
+from awslabs.cost_analysis_mcp_server.terraform_analyzer import analyze_terraform_project
 from bs4 import BeautifulSoup
 from httpx import AsyncClient
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
 
-from awslabs.cost_analysis_mcp_server.cdk_analyzer import analyze_cdk_project
-from awslabs.cost_analysis_mcp_server.static.patterns import BEDROCK
-from awslabs.cost_analysis_mcp_server.terraform_analyzer import analyze_terraform_project
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -275,7 +274,7 @@ async def get_pricing_from_api(
         # Start with the region filter
         region_filter = PricingFilter(field='regionCode', type='TERM_MATCH', value=region)
         api_filters = [region_filter.dict()]
-        
+
         # Add any additional filters if provided
         if filters and filters.filters:
             api_filters.extend([f.dict() for f in filters.filters])
