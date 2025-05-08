@@ -14,18 +14,20 @@
 This server provides tools for analyzing AWS service costs across different user tiers.
 """
 
+from typing import Any, Dict, List, Optional
+
 import argparse
 import boto3
 import logging
 import os
-from awslabs.cost_analysis_mcp_server.cdk_analyzer import analyze_cdk_project
-from awslabs.cost_analysis_mcp_server.static.patterns import BEDROCK
-from awslabs.cost_analysis_mcp_server.terraform_analyzer import analyze_terraform_project
 from bs4 import BeautifulSoup
 from httpx import AsyncClient
 from mcp.server.fastmcp import Context, FastMCP
-from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
+
+from awslabs.cost_analysis_mcp_server.cdk_analyzer import analyze_cdk_project
+from awslabs.cost_analysis_mcp_server.static.patterns import BEDROCK
+from awslabs.cost_analysis_mcp_server.terraform_analyzer import analyze_terraform_project
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -231,7 +233,7 @@ async def get_pricing_from_web(service_code: str, ctx: Context) -> Optional[Dict
     - When retrieving foundation model pricing, always use the latest models for comparison
     - For database compatibility with services, only include confirmed supported databases
     - Providing less information is better than giving incorrect information
-      
+
     Filters should be provided in the format:
     [
         {
