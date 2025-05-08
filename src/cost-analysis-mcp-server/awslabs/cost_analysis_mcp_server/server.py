@@ -271,7 +271,7 @@ async def get_pricing_from_api(
         )
 
         # Start with the region filter
-        region_filter = PricingFilter(field='regionCode', value=region)
+        region_filter = PricingFilter(field='regionCode', type='TERM_MATCH', value=region)
         api_filters = [region_filter.dict()]
         
         # Add any additional filters if provided
